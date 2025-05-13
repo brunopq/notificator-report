@@ -5,6 +5,7 @@ import { type JSX, type ReactNode, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { useInView } from "react-intersection-observer"
 
 import ClientService from "@/services/ClientService"
 import type { Execution, Snapshot } from "@/services/ExecutionService"
@@ -31,8 +32,8 @@ export function ExecutionComponent({ execution }: ExecutionComponentProps) {
             </h2>
 
             <span>
-              {execution.snapshots.length} notificaç
-              {execution.snapshots.length === 1 ? "ão" : "ões"}
+              {execution.notificationSnapshots.length} notificaç
+              {execution.notificationSnapshots.length === 1 ? "ão" : "ões"}
             </span>
           </span>
           <span className="text-sm text-zinc-400">
@@ -51,7 +52,7 @@ export function ExecutionComponent({ execution }: ExecutionComponentProps) {
 function ExecutionDetails({ execution }: ExecutionComponentProps) {
   return (
     <div className="mt-4 space-y-2">
-      {execution.snapshots.map((snap) => (
+      {execution.notificationSnapshots.map((snap) => (
         <SnapshotComponent key={snap.id} snapshot={snap} />
       ))}
     </div>
@@ -63,17 +64,24 @@ type SnapshotComponentProps = {
 }
 
 function SnapshotComponent({ snapshot }: SnapshotComponentProps) {
+  const { ref, inView } = useInView({ threshold: 0.1 })
+
   return (
     <div
+      ref={ref}
       key={snapshot.id}
       className="grid grid-cols-2 items-center justify-between rounded-lg bg-zinc-800/25 p-2"
     >
       <div>
-        <ClientName clientId={snapshot.notification.clientId} />
+        <ClientName
+          visible={inView}
+          clientId={snapshot.notification.clientId}
+        />
         <p className="text-zinc-300">
           <strong>Mensagem:</strong> {snapshot.notification.message}
         </p>
         <MovimentationInfo
+          visible={inView}
           movimentationId={snapshot.notification.movimentationId}
         />
       </div>
@@ -90,10 +98,14 @@ function SnapshotComponent({ snapshot }: SnapshotComponentProps) {
   )
 }
 
-function MovimentationInfo({ movimentationId }: { movimentationId: string }) {
+function MovimentationInfo({
+  movimentationId,
+  visible,
+}: { movimentationId: string; visible: boolean }) {
   const { data, status } = useQuery({
     queryKey: ["lawsuit", movimentationId],
     queryFn: () => MovimentationService.getById(movimentationId),
+    enabled: visible,
   })
 
   let cnj: ReactNode
@@ -116,10 +128,14 @@ function MovimentationInfo({ movimentationId }: { movimentationId: string }) {
   )
 }
 
-function ClientName({ clientId }: { clientId: string }) {
+function ClientName({
+  clientId,
+  visible,
+}: { clientId: string; visible: boolean }) {
   const { data, status } = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => ClientService.getById(clientId),
+    enabled: visible,
   })
 
   let clientName: ReactNode

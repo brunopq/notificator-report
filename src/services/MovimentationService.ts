@@ -1,3 +1,4 @@
+import { env } from "@/config/env"
 import { z } from "zod"
 
 const lawsuitSchema = z.object({
@@ -29,7 +30,11 @@ export type MovimentationWithLawsuit = z.infer<
   typeof movimentationWithLawsuitSchema
 >
 
-class MovimentationService {
+interface IMovimentationService {
+  getById(movimentationId: string): Promise<MovimentationWithLawsuit>
+}
+
+class MemoryMovimentationService implements IMovimentationService {
   private lawsuits: Lawsuit[] = [
     {
       id: "lawsuit_001",
@@ -91,6 +96,24 @@ class MovimentationService {
         resolve(result)
       }, 500)
     })
+  }
+}
+
+class MovimentationService implements IMovimentationService {
+  async getById(movimentationId: string): Promise<MovimentationWithLawsuit> {
+    const res = await fetch(
+      `${env.API_BASE_URL}/movimentations/${movimentationId}`,
+    )
+
+    if (res.status !== 200) {
+      throw new Error("Backend api error")
+    }
+
+    const data = await res.json()
+
+    const parsed = movimentationWithLawsuitSchema.parse(data)
+
+    return parsed
   }
 }
 

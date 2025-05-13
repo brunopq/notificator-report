@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { env } from "@/config/env"
+
 const notificationStatus = [
   "NOT_SENT",
   "SENT",
@@ -25,7 +27,7 @@ const notificationSchema = z.object({
   clientId: z.string(),
   message: z.string(),
   sentAt: z.date({ coerce: true }).nullish(),
-  scheduleArn: z.string().optional(),
+  scheduleArn: z.string().nullish(),
   // recieved: boolean().notNull(), // some day we might implement this
   status: notificationStatusSchema,
   error: notificationErrorsSchema.nullish(),
@@ -41,21 +43,27 @@ const notificationSnapshotSchema = z.object({
 
 export type Snapshot = z.infer<typeof notificationSnapshotSchema>
 
-const executionSchema = z.object({
+export const executionSchema = z.object({
   id: z.string(),
   createdAt: z.date({ coerce: true }),
-  snapshots: z.array(notificationSnapshotSchema),
+  notificationSnapshots: z.array(notificationSnapshotSchema),
 })
+
+export const executionListSchema = z.array(executionSchema)
 
 export type Execution = z.infer<typeof executionSchema>
 
-class ExecutionService {
+interface IExecutionService {
+  list(): Promise<Execution[]>
+}
+
+class MemoryExecutionService implements IExecutionService {
   async list(): Promise<Execution[]> {
     return [
       {
         id: "exec_001",
         createdAt: new Date("2025-05-10T10:00:00Z"),
-        snapshots: [
+        notificationSnapshots: [
           {
             id: "snap_001",
             notificationId: "notif_001",
@@ -77,7 +85,7 @@ class ExecutionService {
       {
         id: "exec_002",
         createdAt: new Date("2025-05-11T14:30:00Z"),
-        snapshots: [
+        notificationSnapshots: [
           {
             id: "snap_002",
             notificationId: "notif_002",
@@ -114,7 +122,7 @@ class ExecutionService {
       {
         id: "exec_003",
         createdAt: new Date("2025-05-12T08:45:00Z"),
-        snapshots: [
+        notificationSnapshots: [
           {
             id: "snap_004",
             notificationId: "notif_004",
@@ -148,6 +156,24 @@ class ExecutionService {
         ],
       },
     ]
+  }
+}
+
+class ExecutionService implements IExecutionService {
+  async list(): Promise<Execution[]> {
+    const res = await fetch(`${env.API_BASE_URL}/executions`)
+
+    if (res.status !== 200) {
+      throw new Error("Backend api error")
+    }
+
+    const data = await res.json()
+
+    console.log(data)
+
+    const parsed = executionListSchema.parse(data)
+
+    return parsed
   }
 }
 

@@ -1,6 +1,8 @@
 import { z } from "zod"
 
-const clientSchema = z.object({
+import { env } from "@/config/env"
+
+export const clientSchema = z.object({
   id: z.string(),
   name: z.string(),
   phones: z.array(z.string()),
@@ -8,7 +10,11 @@ const clientSchema = z.object({
 
 export type Client = z.infer<typeof clientSchema>
 
-class ClientService {
+interface IClientService {
+  getById(id: string): Promise<Client | undefined>
+}
+
+class MemoryClientService implements IClientService {
   private clients: Client[] = [
     {
       id: "client_001",
@@ -31,6 +37,22 @@ class ClientService {
     return new Promise((res) =>
       setTimeout(() => res(this.clients.find((c) => c.id === id)), 1000),
     )
+  }
+}
+
+class ClientService implements IClientService {
+  async getById(id: string): Promise<Client | undefined> {
+    const res = await fetch(`${env.API_BASE_URL}/clients/${id}`)
+
+    if (res.status !== 200) {
+      throw new Error("Backend api error")
+    }
+
+    const data = await res.json()
+
+    const parsed = clientSchema.parse(data)
+
+    return parsed
   }
 }
 
