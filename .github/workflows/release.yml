@@ -22,7 +22,7 @@ jobs:
     - name: Build application
       run: bun run build
     - name: Zip application
-      run: zip -r build.zip .next/standalone .next/static
+      run: zip -r build.zip out
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
