@@ -1,10 +1,12 @@
+"use client"
+
+import { useQuery } from "@tanstack/react-query"
+
 import ExecutionService from "@/services/ExecutionService"
 
 import { ExecutionComponent } from "./ExecutionComponent"
 
-export default async function Home() {
-  const executions = await ExecutionService.list()
-
+export default function Home() {
   return (
     <div className="mx-auto mt-8 max-w-6xl p-4">
       <header>
@@ -17,10 +19,25 @@ export default async function Home() {
       </header>
 
       <main className="space-y-4">
-        {executions.map((e) => (
-          <ExecutionComponent key={e.id} execution={e} />
-        ))}
+        <ExecutionsList />
       </main>
     </div>
   )
+}
+
+function ExecutionsList() {
+  const { data, isError, isLoading } = useQuery({
+    queryKey: [],
+    queryFn: () => ExecutionService.list(),
+  })
+
+  if (isLoading) {
+    return "Carregando dados..."
+  }
+
+  if (isError || !data) {
+    return "Erro ao buscar os dados :("
+  }
+
+  return data.map((e) => <ExecutionComponent key={e.id} execution={e} />)
 }
