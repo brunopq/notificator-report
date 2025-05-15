@@ -77,7 +77,7 @@ function SnapshotComponent({ snapshot }: SnapshotComponentProps) {
           visible={inView}
           clientId={snapshot.notification.clientId}
         />
-        <p className="text-zinc-300">
+        <p className="line-clamp-2 text-zinc-300">
           <strong>Mensagem:</strong> {snapshot.notification.message}
         </p>
         <MovimentationInfo

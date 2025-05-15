@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { env } from "@/config/env"
+import { format } from "date-fns"
 
 const notificationStatus = [
   "NOT_SENT",
@@ -10,6 +11,8 @@ const notificationStatus = [
   "ERROR",
 ] as const
 
+export type NotificationStatus = (typeof notificationStatus)[number]
+
 const notificationStatusSchema = z.enum(notificationStatus)
 
 const notificationErrors = [
@@ -18,6 +21,8 @@ const notificationErrors = [
   "PHONE_NOT_ON_WHATSAPP",
   "UNKNOWN_ERROR",
 ] as const
+
+type NotificationError = (typeof notificationErrors)[number]
 
 const notificationErrorsSchema = z.enum(notificationErrors)
 
@@ -53,8 +58,13 @@ export const executionListSchema = z.array(executionSchema)
 
 export type Execution = z.infer<typeof executionSchema>
 
+export type ListExecutionOptions = {
+  day: Date
+  notificationStatuses?: NotificationStatus[]
+}
+
 interface IExecutionService {
-  list(): Promise<Execution[]>
+  list(options: ListExecutionOptions): Promise<Execution[]>
 }
 
 class MemoryExecutionService implements IExecutionService {
@@ -160,16 +170,22 @@ class MemoryExecutionService implements IExecutionService {
 }
 
 class ExecutionService implements IExecutionService {
-  async list(): Promise<Execution[]> {
-    const res = await fetch(`${env.API_BASE_URL}/executions`)
+  async list({
+    day,
+    notificationStatuses: selectedTypes,
+  }: ListExecutionOptions): Promise<Execution[]> {
+    const formatedDay = format(day, "yyyy-MM-dd")
+    const formatedTypes = selectedTypes?.join(",")
+
+    const res = await fetch(
+      `${env.API_BASE_URL}/executions?day=${formatedDay}&notificationStatuses=${formatedTypes}`,
+    )
 
     if (res.status !== 200) {
       throw new Error("Backend api error")
     }
 
     const data = await res.json()
-
-    console.log(data)
 
     const parsed = executionListSchema.parse(data)
 

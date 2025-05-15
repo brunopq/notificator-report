@@ -23,6 +23,9 @@
 			"recommended": true,
 			"nursery": {
 				"useSortedClasses": "warn"
+			},
+			"a11y": {
+				"noLabelWithoutControl": "off"
 			}
 		}
 	},
