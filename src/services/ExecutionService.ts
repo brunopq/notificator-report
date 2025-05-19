@@ -22,7 +22,7 @@ const notificationErrors = [
   "UNKNOWN_ERROR",
 ] as const
 
-type NotificationError = (typeof notificationErrors)[number]
+export type NotificationError = (typeof notificationErrors)[number]
 
 const notificationErrorsSchema = z.enum(notificationErrors)
 

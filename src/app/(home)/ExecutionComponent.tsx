@@ -8,11 +8,48 @@ import { ptBR } from "date-fns/locale"
 import { useInView } from "react-intersection-observer"
 
 import ClientService from "@/services/ClientService"
-import type { Execution, Snapshot } from "@/services/ExecutionService"
+import type {
+  Execution,
+  NotificationError,
+  NotificationStatus,
+  Snapshot,
+} from "@/services/ExecutionService"
 import MovimentationService from "@/services/MovimentationService"
 
 type ExecutionComponentProps = {
   execution: Execution
+}
+export type KeyOfType<T, KType> = {
+  [K in keyof T]: T[K] extends KType ? K : never
+}[keyof T]
+
+function countBy<T>(
+  list: T[],
+  key: KeyOfType<T, string>,
+): Partial<Record<string, number>> {
+  const counters: Partial<Record<string, number>> = {}
+
+  for (const el of list) {
+    const k = el[key] as string
+    counters[k] = (counters[k] ?? 0) + 1
+  }
+
+  return counters
+}
+
+const statusLabelMap: Record<NotificationStatus, string> = {
+  ERROR: "Erro fatal",
+  NOT_SENT: "Não enviado",
+  SCHEDULED: "Agendado",
+  SENT: "Enviado",
+  WILL_RETRY: "Erro",
+}
+
+const errorLabelMap: Record<NotificationError, string> = {
+  INVALID_PHONE: "Número de telefone inválido",
+  NO_PHONE_NUMBER: "Cliente sem número de telefone",
+  PHONE_NOT_ON_WHATSAPP: "Telefone não está no Whatsapp",
+  UNKNOWN_ERROR: "Erro desconhecido",
 }
 
 export function ExecutionComponent({ execution }: ExecutionComponentProps) {
@@ -25,26 +62,39 @@ export function ExecutionComponent({ execution }: ExecutionComponentProps) {
         type="button"
         onClick={() => setExpanded((p) => !p)}
       >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm text-zinc-400">
-            <h2 className="font-semibold text-lg text-zinc-50">
-              Execução {execution.id}
-            </h2>
-
-            <span>
-              {execution.notificationSnapshots.length} notificaç
-              {execution.notificationSnapshots.length === 1 ? "ão" : "ões"}
-            </span>
-          </span>
-          <span className="text-sm text-zinc-400">
+        <div className="text-start ">
+          <h2 className="w-fit font-semibold text-lg text-zinc-50">
+            Execução{" "}
             {format(new Date(execution.createdAt), "dd 'de' MMMM 'às' HH:mm", {
               locale: ptBR,
             })}
-          </span>
+          </h2>
+
+          <ExecutionSummary execution={execution} />
         </div>
       </button>
 
       {expanded && <ExecutionDetails execution={execution} />}
+    </div>
+  )
+}
+
+function ExecutionSummary({ execution }: ExecutionComponentProps) {
+  const { SENT, ERROR, WILL_RETRY } = countBy(
+    execution.notificationSnapshots,
+    "status",
+  )
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-zinc-400">
+      <span>
+        {execution.notificationSnapshots.length} notificaç
+        {execution.notificationSnapshots.length === 1 ? "ão" : "ões"}
+      </span>
+
+      <span className="text-green-300">{SENT || 0} enviadas</span>
+      <span className="text-red-300">{ERROR || 0} falharam</span>
+      <span className="text-orange-300">{WILL_RETRY || 0} erro temporário</span>
     </div>
   )
 }
@@ -90,7 +140,7 @@ function SnapshotComponent({ snapshot }: SnapshotComponentProps) {
         <StatusBadge status={snapshot.status} />
         {snapshot.error && (
           <span className="text-red-400 text-xs">
-            Erro: {snapshot.error.replaceAll("_", " ").toLowerCase()}
+            {errorLabelMap[snapshot.error]}
           </span>
         )}
       </div>
@@ -158,11 +208,11 @@ function ClientName({
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: NotificationStatus }) {
   const baseClass =
     "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium"
 
-  const styles: Record<string, string> = {
+  const styles: Record<NotificationStatus, string> = {
     SENT: `${baseClass} bg-green-700 text-white`,
     ERROR: `${baseClass} bg-red-600 text-white`,
     NOT_SENT: `${baseClass} bg-zinc-700 text-zinc-300`,
@@ -170,7 +220,7 @@ function StatusBadge({ status }: { status: string }) {
     SCHEDULED: `${baseClass} bg-blue-600 text-white`,
   }
 
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<NotificationStatus, JSX.Element> = {
     SENT: <Send size={14} />,
     ERROR: <AlertTriangle size={14} />,
     NOT_SENT: <Clock size={14} />,
@@ -180,7 +230,7 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span className={styles[status] ?? baseClass}>
-      {icons[status]} {status}
+      {icons[status]} {statusLabelMap[status]}
     </span>
   )
 }
